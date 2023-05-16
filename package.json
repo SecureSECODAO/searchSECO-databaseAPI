@@ -1,0 +1,16 @@
+{
+  "name": "searchseco-parser",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm run build-ts",
+    "build-ts": "tsc"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "net": "^1.0.2",
+    "typescript": "^5.0.4"
+  }
+}

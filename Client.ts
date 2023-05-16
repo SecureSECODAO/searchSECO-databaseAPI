@@ -1,7 +1,6 @@
 import { Socket } from 'net'
 import { AuthorResponseData, CheckResponseData, ResponseData, ResponseDecoder, TCPResponse } from './Response'
 import { RequestType, TCPRequest, RequestGenerator } from './Request'
-import { Command, RequestMapping } from '../controller/Command'
 
 
 /**
