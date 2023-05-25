@@ -30,6 +30,7 @@ export class TCPClient implements ITCPClient {
 
     constructor(clientName: string, host: string, port: number | string) {
         this._clientName = clientName
+
         this._port = typeof(port) == 'number' ? port : parseInt(port)
         this._host = host
 
@@ -40,7 +41,7 @@ export class TCPClient implements ITCPClient {
         this._client.on('data', (data: any) => {
             const [code, ...rawResponse] = data.toString().split('\n')
             const { type } = this._request || { type: RequestType.UNDEFINED }
-            
+
             this._requestProcessed = true
             this._busy = false
 
@@ -86,6 +87,10 @@ export class TCPClient implements ITCPClient {
         responses.push(versionResponse)
 
         return responses
+    }
+
+    public async Upload(data: string[]): Promise<TCPResponse> {
+        return await this.Fetch(RequestType.UPLOAD, data)
     }
 
     public async Fetch(type: RequestType, data: string[]): Promise<TCPResponse> {
