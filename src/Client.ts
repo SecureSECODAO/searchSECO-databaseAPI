@@ -13,7 +13,7 @@ export interface ITCPClient {
      * @param data The data to be used when processing the request
      * @returns A promise which resolves to a `TCPResponse` when the request is handled.
      */
-    Fetch(requestType: RequestType, data: string[]): Promise<TCPResponse>
+    Execute(requestType: RequestType, data: string[]): Promise<TCPResponse>
 }
 
 export class TCPClient implements ITCPClient {
@@ -71,11 +71,11 @@ export class TCPClient implements ITCPClient {
     public async Check(hashes: string[]): Promise<TCPResponse[]> {
         const responses: TCPResponse[] = []
 
-        const checkResponse = await this.Fetch(RequestType.CHECK, hashes)
+        const checkResponse = await this.Execute(RequestType.CHECK, hashes)
         responses.push(checkResponse)
 
         const authors = Array.from(new Set(checkResponse.response.map((r: CheckResponseData) => r.authorIds).reduce((acc: string[], val: string[]) => acc.concat(val), [])))
-        const authorResponse = await this.Fetch(RequestType.GET_AUTHOR, authors)
+        const authorResponse = await this.Execute(RequestType.GET_AUTHOR, authors)
         responses.push(authorResponse)
 
         const uniqueVersions = new Set<string>() 
@@ -83,21 +83,13 @@ export class TCPClient implements ITCPClient {
             uniqueVersions.add(`${r.projectID}?${r.startVersion}`)
             uniqueVersions.add(`${r.projectID}?${r.endVersion}`)
         })
-        const versionResponse = await this.Fetch(RequestType.EXTRACT_PROJECTS, Array.from(uniqueVersions))
+        const versionResponse = await this.Execute(RequestType.EXTRACT_PROJECTS, Array.from(uniqueVersions))
         responses.push(versionResponse)
 
         return responses
     }
 
-    public async Upload(data: string[]): Promise<TCPResponse> {
-        return await this.Fetch(RequestType.UPLOAD, data)
-    }
-
-    public async GetProjectVersion(data: string[]): Promise<TCPResponse> {
-        return await this.Fetch(RequestType.GET_PREVIOUS_PROJECT, data)
-    }
-
-    public async Fetch(type: RequestType, data: string[]): Promise<TCPResponse> {
+    public async Execute(type: RequestType, data: string[]): Promise<TCPResponse> {
         if (!this._silent) console.log(`Fetching ${data.length} items...`)
 
         while (this._busy)
