@@ -93,6 +93,10 @@ export class TCPClient implements ITCPClient {
         return await this.Fetch(RequestType.UPLOAD, data)
     }
 
+    public async GetProjectVersion(data: string[]): Promise<TCPResponse> {
+        return await this.Fetch(RequestType.GET_PREVIOUS_PROJECT, data)
+    }
+
     public async Fetch(type: RequestType, data: string[]): Promise<TCPResponse> {
         if (!this._silent) console.log(`Fetching ${data.length} items...`)
 
