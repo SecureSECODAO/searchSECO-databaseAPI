@@ -71,6 +71,7 @@ export class ResponseDecoder {
 
         if (typeof response == typeof VersionResponseData) {
             response.raw = raw.join('?')
+            return [response]
         }
 
         const decoded: ResponseData[] = []
