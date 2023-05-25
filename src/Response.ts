@@ -1,6 +1,8 @@
 import { RequestType } from './Request'
 
-export class ResponseData {}
+export class ResponseData {
+    [key: string]: any
+}
 export class CheckResponseData extends ResponseData {
     public method_hash: string = ''
     public projectID: string = ''
@@ -33,6 +35,9 @@ export class ProjectResponseData extends ResponseData {
     public defaultBranch: string = ''
 }
 
+export class VersionResponseData extends ResponseData {
+}
+
 export class TCPResponse {
     public responseCode: number
     public requestType: RequestType
@@ -53,6 +58,7 @@ export class ResponseDecoder {
             case RequestType.CHECK: return new CheckResponseData()
             case RequestType.GET_AUTHOR: return new AuthorResponseData()
             case RequestType.EXTRACT_PROJECTS: return new ProjectResponseData()
+            case RequestType.GET_PREVIOUS_PROJECT: return new VersionResponseData()
             default: return new ResponseData()
         }
     }
@@ -63,7 +69,11 @@ export class ResponseDecoder {
 
         const response = ResponseDecoder._instance.getResponseType(request)
 
-        const decoded = [] as ResponseData[]
+        if (typeof response == typeof VersionResponseData) {
+            response.raw = raw.join('?')
+        }
+
+        const decoded: ResponseData[] = []
         raw.forEach(line => {
             const rawMetadata = line.split('?')
             const decodedMetadata = JSON.parse(JSON.stringify(response)) as any
