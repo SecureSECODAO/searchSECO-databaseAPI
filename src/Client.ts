@@ -90,8 +90,6 @@ export class TCPClient implements ITCPClient {
     }
 
     public async Execute(type: RequestType, data: string[]): Promise<TCPResponse> {
-        if (!this._silent) console.log(`Fetching ${data.length} items...`)
-
         while (this._busy)
             await new Promise(resolve => setTimeout(resolve, 500))
 
@@ -113,6 +111,7 @@ export class TCPClient implements ITCPClient {
     }
 
     private _sendData(request: string) {
+        if (!this._silent) console.log(`sending: ${request}`)
         this._client.write(request)
     }
 }
