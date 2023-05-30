@@ -36,6 +36,10 @@ export class ProjectResponseData extends ResponseData {
 }
 
 export class VersionResponseData extends ResponseData {
+    raw: string = ''
+}
+export class JobResponseData extends ResponseData {
+    raw: string = ''
 }
 
 export class TCPResponse {
@@ -59,6 +63,7 @@ export class ResponseDecoder {
             case RequestType.GET_AUTHOR: return new AuthorResponseData()
             case RequestType.EXTRACT_PROJECTS: return new ProjectResponseData()
             case RequestType.GET_PREVIOUS_PROJECT: return new VersionResponseData()
+            case RequestType.GET_TOP_JOB: return new JobResponseData()
             default: return new ResponseData()
         }
     }
@@ -68,8 +73,7 @@ export class ResponseDecoder {
             return []
 
         const response = ResponseDecoder._instance.getResponseType(request)
-
-        if (typeof response == typeof VersionResponseData) {
+        if (typeof response == typeof VersionResponseData || typeof JobResponseData) {
             response.raw = raw.join('?')
             return [response]
         }
@@ -77,18 +81,19 @@ export class ResponseDecoder {
         const decoded: ResponseData[] = []
         raw.forEach(line => {
             const rawMetadata = line.split('?')
-            const decodedMetadata = JSON.parse(JSON.stringify(response)) as any
-            const keys = Object.keys(decodedMetadata)
+            const responseObj = JSON.parse(JSON.stringify(response)) as any
+            const keys = Object.keys(responseObj)
             keys.forEach((key, idx) => {
                 if (idx == keys.length - 1 && idx < rawMetadata.length - 1) {
                     for (let i = idx; i < rawMetadata.length; i++)
-                        (decodedMetadata[key] as string[]).push(rawMetadata[i])
+                        if (typeof responseObj[key] === 'object') 
+                            (responseObj[key] as string[]).push(rawMetadata[i])
                 }
-                else if (typeof decodedMetadata[key] === 'object') decodedMetadata[key].push(rawMetadata[idx])
-                else decodedMetadata[key] = rawMetadata[idx]
+                else if (typeof responseObj[key] === 'object') responseObj[key].push(rawMetadata[idx])
+                else responseObj[key] = rawMetadata[idx] || ''
             })
             // methodMetadata.authorIds = methodMetadata.authorIds.split(',')
-            decoded.push(decodedMetadata)
+            decoded.push(responseObj)
         })
         return decoded
      }
