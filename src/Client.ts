@@ -58,6 +58,20 @@ export class TCPClient implements ITCPClient {
             Logger.Debug(`Response code ${this._response.responseCode} received from database.`, Logger.GetCallerLocation())
             Logger.Debug(`Received data: ${JSON.stringify(this._response.response)}`, Logger.GetCallerLocation())
 
+            
+            switch (this._response.responseCode) {
+                case 200:
+                    if (this._response.response[0].raw && !this._response.response[0].raw.includes('?'))
+                        Logger.Info(this._response.response[0].raw, Logger.GetCallerLocation())
+                    break
+                case 400:
+                    Logger.Error(`Bad request: ${this._response.response[0].raw}`, Logger.GetCallerLocation())
+                    break
+                case 500:
+                    Logger.Error(`Server error: ${this._response.response[0].raw}`, Logger.GetCallerLocation())
+                    break
+            }
+
             this._client.destroy()
         })
     }
