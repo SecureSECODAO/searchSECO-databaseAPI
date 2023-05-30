@@ -61,7 +61,11 @@ export class TCPClient implements ITCPClient {
             
             switch (this._response.responseCode) {
                 case 200:
-                    if (this._response.response[0].raw && !this._response.response[0].raw.includes('?'))
+                    const isMessage = 
+                        this._response.response[0] 
+                        && this._response.response[0].raw 
+                        && !this._response.response[0].raw.includes('?')
+                    if (isMessage)
                         Logger.Info(this._response.response[0].raw, Logger.GetCallerLocation())
                     break
                 case 400:
