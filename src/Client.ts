@@ -56,7 +56,7 @@ export class TCPClient implements ITCPClient {
             )
             
             Logger.Debug(`Response code ${this._response.responseCode} received from database.`, Logger.GetCallerLocation())
-            Logger.Debug(`Received data: ${this._response.response}`, Logger.GetCallerLocation())
+            Logger.Debug(`Received data: ${JSON.stringify(this._response.response)}`, Logger.GetCallerLocation())
 
             this._client.destroy()
         })
