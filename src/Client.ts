@@ -1,6 +1,7 @@
 import { Socket } from 'net'
 import { AuthorResponseData, CheckResponseData, ResponseData, ResponseDecoder, TCPResponse } from './Response'
 import { RequestType, TCPRequest, RequestGenerator } from './Request'
+import Logger, { Verbosity } from './searchSECO-logger/src/Logger'
 
 
 /**
@@ -26,9 +27,12 @@ export class TCPClient implements ITCPClient {
     private _busy: boolean = false
     private _response: TCPResponse | undefined = undefined
     private _error: any | undefined = undefined
-    private _silent: boolean = false
 
-    constructor(clientName: string, host: string, port: number | string) {
+    constructor(clientName: string, host: string, port: number | string, verbosity: Verbosity = Verbosity.DEBUG) {
+
+        Logger.SetModule("database-API")
+        Logger.SetVerbosity(verbosity)
+
         this._clientName = clientName
 
         this._port = typeof(port) == 'number' ? port : parseInt(port)
@@ -50,13 +54,12 @@ export class TCPClient implements ITCPClient {
                 type,
                 ResponseDecoder.Decode(type, rawResponse.filter((r: string) => r !== ''))
             )
-            if (!this._silent) console.log("Done!")
+            
+            Logger.Debug(`Response code ${this._response.responseCode} received from database.`, Logger.GetCallerLocation())
+            Logger.Debug(`Received data: ${this._response.response}`, Logger.GetCallerLocation())
+
             this._client.destroy()
         })
-    }
-
-    public Silence(isSilent: boolean) {
-        this._silent = isSilent
     }
 
     private _connect(): void {
@@ -90,8 +93,6 @@ export class TCPClient implements ITCPClient {
     }
 
     public async Execute(type: RequestType, data: string[]): Promise<TCPResponse> {
-        if (!this._silent) console.log(`Fetching ${data.length} items...`)
-
         while (this._busy)
             await new Promise(resolve => setTimeout(resolve, 500))
 
@@ -113,6 +114,8 @@ export class TCPClient implements ITCPClient {
     }
 
     private _sendData(request: string) {
+        Logger.Debug(`Sending ${request.length} bytes to the database.`, Logger.GetCallerLocation())
+        Logger.Debug(`Sending: ${request}`, Logger.GetCallerLocation())
         this._client.write(request)
     }
 }
