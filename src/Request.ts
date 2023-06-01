@@ -26,12 +26,12 @@ export type TCPRequest = {
 
 export class RequestGenerator {
     public static Generate(type: RequestType, clientName: string, raw: string[]): TCPRequest {
-        const dataLength = raw.reduce((prev, curr) => prev + `${curr}\n`.length, 0)
-        const requests =
-            [`${type}?${clientName}?${dataLength}\n`, raw.reduce((prev, curr) => prev + `${curr}\n`, "")]
+        const body = raw.join('\n')
+        const header = [type, clientName, body.length == 0 ? 0 : body.length+1].join('?')
+
         return {
             type,
-            body: requests
+            body: [ `${header}\n`, body.length > 0 ? `${body}\n` : body ]
         }
     }
 }

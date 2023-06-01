@@ -41,9 +41,19 @@ export class TCPClient implements ITCPClient {
         this._client = new Socket()
         this._client.on('error', (err: any) => {
             this._error = err
+            this._requestProcessed = true
         })
         this._client.on('data', (data: any) => {
+
+            Logger.Debug(`Received: ${data}`, Logger.GetCallerLocation())
+
             const [code, ...rawResponse] = data.toString().split('\n')
+
+            if (Number.isNaN(parseInt(code))) {
+                Logger.Error(data, Logger.GetCallerLocation())
+                return
+            }
+
             const { type } = this._request || { type: RequestType.UNDEFINED }
 
             this._requestProcessed = true
@@ -56,8 +66,6 @@ export class TCPClient implements ITCPClient {
             )
             
             Logger.Debug(`Response code ${this._response.responseCode} received from database.`, Logger.GetCallerLocation())
-            Logger.Debug(`Received data: ${JSON.stringify(this._response.response)}`, Logger.GetCallerLocation())
-
             
             switch (this._response.responseCode) {
                 case 200:
