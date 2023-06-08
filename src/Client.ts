@@ -45,8 +45,6 @@ export class TCPClient implements ITCPClient {
         })
         this._client.on('data', (data: any) => {
 
-            Logger.Debug(`Received: ${data}`, Logger.GetCallerLocation())
-
             const [code, ...rawResponse] = data.toString().split('\n')
 
             if (Number.isNaN(parseInt(code))) {
@@ -131,11 +129,15 @@ export class TCPClient implements ITCPClient {
 
         this._request.body.forEach(r => this._sendData(r))
 
-        while (!this._requestProcessed) {
+        while (!this._requestProcessed)
             await new Promise(resolve => setTimeout(resolve, 500))
+
+        if (this._error) {
+            Logger.Error(`Database Error: ${this._error}. Retrying after 2 seconds...`, Logger.GetCallerLocation())
+            this._error = undefined
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            await this.Execute(type, data)
         }
-        if (this._error)
-            throw this._error
         return this._response || new TCPResponse(500, RequestType.UNDEFINED, [])
     }
 
