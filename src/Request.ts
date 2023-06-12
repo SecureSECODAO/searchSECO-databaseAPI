@@ -26,7 +26,7 @@ export type TCPRequest = {
 
 export class RequestGenerator {
     public static Generate(type: RequestType, clientName: string, raw: string[]): TCPRequest {
-        const body = raw.join('\n')
+        const body = raw.map(r => Buffer.from(r).toString()).join('\n')
         const header = [type, clientName, body.length == 0 ? 0 : body.length+1].join('?')
 
         return {

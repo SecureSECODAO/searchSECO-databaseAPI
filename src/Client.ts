@@ -3,6 +3,7 @@ import { AuthorResponseData, CheckResponseData, ResponseData, ResponseDecoder, T
 import { RequestType, TCPRequest, RequestGenerator } from './Request'
 import Logger, { Verbosity } from './searchSECO-logger/src/Logger'
 
+const MAX_RETRY_COUNT = 3
 
 /**
  * The TCP Client interface
@@ -27,6 +28,7 @@ export class TCPClient implements ITCPClient {
     private _busy: boolean = false
     private _response: TCPResponse | undefined = undefined
     private _error: any | undefined = undefined
+    private _retryCount: number = 0
 
     constructor(clientName: string, host: string, port: number | string, verbosity: Verbosity = Verbosity.DEBUG) {
 
@@ -42,17 +44,22 @@ export class TCPClient implements ITCPClient {
         this._client.on('error', (err: any) => {
             this._error = err
             this._requestProcessed = true
+            this._busy = false
         })
         this._client.on('data', (data: any) => {
 
+            this._retryCount = 0
             const [code, ...rawResponse] = data.toString().split('\n')
+            const { type } = this._request || { type: RequestType.UNDEFINED }
 
             if (Number.isNaN(parseInt(code))) {
                 Logger.Error(data, Logger.GetCallerLocation())
+                this._requestProcessed = true
+                this._busy = false
+                this._response = new TCPResponse(500, type, [ code ])
                 return
             }
 
-            const { type } = this._request || { type: RequestType.UNDEFINED }
 
             this._requestProcessed = true
             this._busy = false
@@ -133,12 +140,21 @@ export class TCPClient implements ITCPClient {
             await new Promise(resolve => setTimeout(resolve, 500))
 
         if (this._error) {
+
+            if (this._retryCount >= MAX_RETRY_COUNT) {
+                Logger.Error(`Connection timed out with error ${this._error}, skipping project`, Logger.GetCallerLocation())
+                this._retryCount = 0
+                this._error = undefined
+                return new TCPResponse(500, type, [])
+            }
+
             Logger.Error(`Database Error: ${this._error}. Retrying after 2 seconds...`, Logger.GetCallerLocation())
             this._error = undefined
+            this._retryCount++
             await new Promise(resolve => setTimeout(resolve, 2000))
             await this.Execute(type, data)
         }
-        return this._response || new TCPResponse(500, RequestType.UNDEFINED, [])
+        return this._response || new TCPResponse(500, type, [])
     }
 
     private _sendData(request: string) {
