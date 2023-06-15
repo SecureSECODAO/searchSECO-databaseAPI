@@ -1,52 +1,52 @@
 import { RequestType } from './Request'
 
 export class ResponseData {
-    [key: string]: any
+    [key: string]: unknown
 }
 export class CheckResponseData extends ResponseData {
-    public method_hash: string = ''
-    public projectID: string = ''
-    public startVersion: string = ''
-    public startVersionHash: string = ''
-    public endVersion: string = ''
-    public endVersionHash: string = ''
-    public method_name: string = ''
-    public file: string = ''
-    public lineNumber: string = ''
-    public parserVersion: string = ''
-    public vulnCode: string = ''
-    public authorTotal: string = ''
+    public method_hash = ''
+    public projectID = ''
+    public startVersion = ''
+    public startVersionHash = ''
+    public endVersion = ''
+    public endVersionHash = ''
+    public method_name = ''
+    public file = ''
+    public lineNumber = ''
+    public parserVersion = ''
+    public vulnCode = ''
+    public authorTotal = ''
     public authorIds: string[] = []
 }
 export class AuthorResponseData extends ResponseData {
-    public username: string = ''
-    public email: string = ''
-    public uuid: string = ''
+    public username = ''
+    public email = ''
+    public uuid = ''
 }
 export class ProjectResponseData extends ResponseData {
-    public id: string = ''
-    public versionTime: string = ''
-    public versionHash: string = ''
-    public license: string = ''
-    public name: string = ''
-    public url: string = ''
-    public authorName: string = ''
-    public authorMail: string = ''
-    public defaultBranch: string = ''
+    public id = ''
+    public versionTime = ''
+    public versionHash = ''
+    public license = ''
+    public name = ''
+    public url = ''
+    public authorName = ''
+    public authorMail = ''
+    public defaultBranch = ''
 }
 
 export class VersionResponseData extends ResponseData {
-    raw: string = ''
+    raw = ''
 }
 export class JobResponseData extends ResponseData {
-    raw: string = ''
+    raw = ''
 }
 
 export class TCPResponse {
     public responseCode: number
     public requestType: RequestType
-    public response: any[]
-    constructor(responseCode: number, requestType: RequestType, response: any[]) {
+    public response: unknown[]
+    constructor(responseCode: number, requestType: RequestType, response: unknown[]) {
         this.responseCode = responseCode
         this.requestType = requestType
         this.response = response
@@ -81,18 +81,18 @@ export class ResponseDecoder {
         const decoded: ResponseData[] = []
         raw.forEach(line => {
             const rawMetadata = line.split('?')
-            const responseObj = JSON.parse(JSON.stringify(response)) as any
+            const responseObj = JSON.parse(JSON.stringify(response)) as { [key:string]: unknown }
             const keys = Object.keys(responseObj)
             keys.forEach((key, idx) => {
                 if (idx == keys.length - 1 && idx < rawMetadata.length - 1) {
                     for (let i = idx; i < rawMetadata.length; i++)
-                        if (typeof responseObj[key] === 'object') 
+                        if (Array.isArray(responseObj[key])) 
                             (responseObj[key] as string[]).push(rawMetadata[i])
                 }
-                else if (typeof responseObj[key] === 'object') responseObj[key].push(rawMetadata[idx])
+                else if (Array.isArray(responseObj[key])) 
+                    (responseObj[key] as string[]).push(rawMetadata[idx])
                 else responseObj[key] = rawMetadata[idx] || ''
             })
-            // methodMetadata.authorIds = methodMetadata.authorIds.split(',')
             decoded.push(responseObj)
         })
         return decoded

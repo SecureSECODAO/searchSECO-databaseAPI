@@ -1,5 +1,5 @@
 import { Socket } from 'net'
-import { AuthorResponseData, CheckResponseData, ResponseData, ResponseDecoder, TCPResponse } from './Response'
+import { CheckResponseData, ResponseDecoder, TCPResponse } from './Response'
 import { RequestType, TCPRequest, RequestGenerator } from './Request'
 import Logger, { Verbosity } from './searchSECO-logger/src/Logger'
 
@@ -24,11 +24,11 @@ export class TCPClient implements ITCPClient {
     private readonly _clientName: string
     private readonly _client: Socket
     private _request: TCPRequest | undefined = undefined
-    private _requestProcessed: boolean = false
-    private _busy: boolean = false
+    private _requestProcessed = false
+    private _busy = false
     private _response: TCPResponse | undefined = undefined
-    private _error: any | undefined = undefined
-    private _retryCount: number = 0
+    private _error: unknown | undefined = undefined
+    private _retryCount = 0
 
     constructor(clientName: string, host: string, port: number | string, verbosity: Verbosity = Verbosity.DEBUG) {
 
@@ -41,12 +41,12 @@ export class TCPClient implements ITCPClient {
         this._host = host
 
         this._client = new Socket()
-        this._client.on('error', (err: any) => {
+        this._client.on('error', (err: unknown) => {
             this._error = err
             this._requestProcessed = true
             this._busy = false
         })
-        this._client.on('data', (data: any) => {
+        this._client.on('data', (data: string) => {
 
             this._retryCount = 0
             const [code, ...rawResponse] = data.toString().split('\n')
@@ -73,20 +73,23 @@ export class TCPClient implements ITCPClient {
             Logger.Debug(`Response code ${this._response.responseCode} received from database.`, Logger.GetCallerLocation())
             
             switch (this._response.responseCode) {
-                case 200:
-                    const isMessage = 
-                        this._response.response[0] 
-                        && this._response.response[0].raw 
-                        && !this._response.response[0].raw.includes('?')
+                case 200: {
+                    const isMessage = ((res: string | undefined) => {
+                        return res && !res.includes('?')
+                    })((this._response.response[0] as { raw: string } | undefined)?.raw)
+                         
                     if (isMessage)
-                        Logger.Info(this._response.response[0].raw, Logger.GetCallerLocation())
+                        Logger.Info((this._response.response[0] as { raw: string }).raw, Logger.GetCallerLocation())
                     break
+                }
                 case 400:
-                    Logger.Error(`Bad request: ${this._response.response[0].raw}`, Logger.GetCallerLocation())
+        Logger.Error(`Bad request: ${(this._response.response[0] as { raw: string }).raw}`, Logger.GetCallerLocation())
                     break
                 case 500:
-                    Logger.Error(`Server error: ${this._response.response[0].raw}`, Logger.GetCallerLocation())
+                    Logger.Error(`Server error: ${(this._response.response[0] as { raw: string }).raw}`, Logger.GetCallerLocation())
                     break
+                default:
+                    Logger.Error(`Unknown error code: ${(this._response.response[0] as { raw: string }).raw}`, Logger.GetCallerLocation())
             }
 
             this._client.destroy()
