@@ -75,7 +75,7 @@ export class TCPClient implements ITCPClient {
             switch (this._response.responseCode) {
                 case 200: {
                     const isMessage = ((res: string | undefined) => {
-                        return res && !res.includes('?')
+                        return res && !res.includes('?') && Number.isNaN(parseInt(res))
                     })((this._response.response[0] as { raw: string } | undefined)?.raw)
                          
                     if (isMessage)
@@ -154,8 +154,9 @@ export class TCPClient implements ITCPClient {
             Logger.Error(`Database Error: ${this._error}. Retrying after 2 seconds...`, Logger.GetCallerLocation())
             this._error = undefined
             this._retryCount++
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            await this.Execute(type, data)
+            await new Promise(resolve => setTimeout(resolve, 2000)).then(async () => {
+                await this.Execute(type, data)
+            })
         }
         return this._response || new TCPResponse(500, type, [])
     }
