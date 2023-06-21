@@ -154,9 +154,8 @@ export class TCPClient implements ITCPClient {
             Logger.Error(`Database Error: ${this._error}. Retrying after 2 seconds...`, Logger.GetCallerLocation())
             this._error = undefined
             this._retryCount++
-            await new Promise(resolve => setTimeout(resolve, 2000)).then(async () => {
-                await this.Execute(type, data)
-            })
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            await this.Execute(type, data)
         }
         return this._response || new TCPResponse(500, type, [])
     }
