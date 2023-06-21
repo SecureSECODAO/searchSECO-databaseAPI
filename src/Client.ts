@@ -45,6 +45,7 @@ export class TCPClient implements ITCPClient {
             this._error = err
             this._requestProcessed = true
             this._busy = false
+            this._client.destroy()
         })
         this._client.on('data', (data: string) => {
 
@@ -83,7 +84,7 @@ export class TCPClient implements ITCPClient {
                     break
                 }
                 case 400:
-        Logger.Error(`Bad request: ${(this._response.response[0] as { raw: string }).raw}`, Logger.GetCallerLocation())
+                    Logger.Error(`Bad request: ${(this._response.response[0] as { raw: string }).raw}`, Logger.GetCallerLocation())
                     break
                 case 500:
                     Logger.Error(`Server error: ${(this._response.response[0] as { raw: string }).raw}`, Logger.GetCallerLocation())
@@ -126,6 +127,12 @@ export class TCPClient implements ITCPClient {
         return responses
     }
 
+    /**
+     * Executes a request against the SearchSECO database
+     * @param type The request type to execute
+     * @param data The data needed to be sent
+     * @returns A promise which resolves to a TCPResponse object.
+     */
     public async Execute(type: RequestType, data: string[]): Promise<TCPResponse> {
         while (this._busy)
             await new Promise(resolve => setTimeout(resolve, 500))
