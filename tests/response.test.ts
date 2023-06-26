@@ -1,3 +1,4 @@
+import { Verbosity } from "../src/searchSECO-logger/src/Logger";
 import { TCPClient } from "../src/Client"
 import { RequestType } from "../src/Request"
 import { ResponseDecoder, ResponseData } from "../src/Response"
@@ -6,8 +7,7 @@ describe("The response object", () => {
     let client;
 
     beforeAll(() => {
-        client = new TCPClient("test", process.env.DB_HOST || "127.0.0.1", process.env.DB_PORT || 8003)
-        client.Silence(true)
+        client = new TCPClient("test", '131.211.31.209', 8003, Verbosity.SILENT)
     })
 
     it("should correctly decode a request object", () => {

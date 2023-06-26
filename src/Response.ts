@@ -73,7 +73,7 @@ export class ResponseDecoder {
             return []
 
         const response = ResponseDecoder._instance.getResponseType(request)
-        if (typeof response == typeof VersionResponseData || typeof JobResponseData) {
+        if (response.raw) {
             response.raw = raw.join('?')
             return [response]
         }
@@ -86,8 +86,9 @@ export class ResponseDecoder {
             keys.forEach((key, idx) => {
                 if (idx == keys.length - 1 && idx < rawMetadata.length - 1) {
                     for (let i = idx; i < rawMetadata.length; i++)
-                        if (Array.isArray(responseObj[key])) 
+                        if (Array.isArray(responseObj[key])) {
                             (responseObj[key] as string[]).push(rawMetadata[i])
+                        }
                 }
                 else if (Array.isArray(responseObj[key])) 
                     (responseObj[key] as string[]).push(rawMetadata[idx])

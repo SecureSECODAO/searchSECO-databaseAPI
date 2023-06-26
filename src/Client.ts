@@ -112,7 +112,12 @@ export class TCPClient implements ITCPClient {
         const checkResponse = await this.Execute(RequestType.CHECK, hashes)
         responses.push(checkResponse)
 
-        const authors = Array.from(new Set(checkResponse.response.map((r: CheckResponseData) => r.authorIds).reduce((acc: string[], val: string[]) => acc.concat(val), [])))
+        const authors = Array.from(
+            new Set(checkResponse.response
+                    .map((r: CheckResponseData) => r.authorIds).flat()
+                    .filter(r => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/.test(r))
+            )
+        )
         const authorResponse = await this.Execute(RequestType.GET_AUTHOR, authors)
         responses.push(authorResponse)
 
@@ -121,7 +126,9 @@ export class TCPClient implements ITCPClient {
             uniqueVersions.add(`${r.projectID}?${r.startVersion}`)
             uniqueVersions.add(`${r.projectID}?${r.endVersion}`)
         })
-        const versionResponse = await this.Execute(RequestType.EXTRACT_PROJECTS, Array.from(uniqueVersions))
+        const versionResponse = await this.Execute(
+            RequestType.EXTRACT_PROJECTS, 
+            Array.from(uniqueVersions).filter(uniqueVersions=>uniqueVersions))
         responses.push(versionResponse)
 
         return responses

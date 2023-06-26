@@ -1,12 +1,12 @@
 import { RequestType } from "../src/Request";
 import { TCPClient } from "../src/Client";
+import { Verbosity } from "../src/searchSECO-logger/src/Logger";
 
 describe("The client", () => {
     let client: TCPClient
 
     beforeAll(() => {
-        client = new TCPClient("test", process.env.DB_HOST || "127.0.0.1", process.env.DB_PORT || 8003, )
-        client.Silence(true)
+        client = new TCPClient("test", '131.211.31.209', 8003, Verbosity.SILENT)
     })
 
     it("should correctly execute the 'check' command", async () => {
