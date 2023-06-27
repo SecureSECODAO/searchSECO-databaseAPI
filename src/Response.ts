@@ -42,6 +42,10 @@ export class JobResponseData extends ResponseData {
     raw = ''
 }
 
+export class DefaultResponseData extends ResponseData {
+    raw = ''
+}
+
 export class TCPResponse {
     public responseCode: number
     public requestType: RequestType
@@ -64,7 +68,7 @@ export class ResponseDecoder {
             case RequestType.EXTRACT_PROJECTS: return new ProjectResponseData()
             case RequestType.GET_PREVIOUS_PROJECT: return new VersionResponseData()
             case RequestType.GET_TOP_JOB: return new JobResponseData()
-            default: return new ResponseData()
+            default: return new DefaultResponseData()
         }
     }
 
@@ -73,7 +77,7 @@ export class ResponseDecoder {
             return []
 
         const response = ResponseDecoder._instance.getResponseType(request)
-        if (response.raw) {
+        if (response.raw != undefined) {
             response.raw = raw.join('?')
             return [response]
         }
