@@ -1,5 +1,5 @@
 import { Socket } from 'net';
-import { CheckResponseData, ResponseDecoder, TCPResponse } from './Response';
+import { MethodResponseData, ResponseDecoder, TCPResponse } from './Response';
 import { RequestType, TCPRequest, RequestGenerator } from './Request';
 import Logger, { Verbosity } from './searchSECO-logger/src/Logger';
 
@@ -58,7 +58,7 @@ export class TCPClient implements ITCPClient {
 				Logger.Error(data, Logger.GetCallerLocation());
 				this._requestProcessed = true;
 				this._busy = false;
-				this._response = new TCPResponse(500, type, [code]);
+				this._response = new TCPResponse(500, type, []);
 				return;
 			}
 
@@ -88,19 +88,19 @@ export class TCPClient implements ITCPClient {
 				}
 				case 400:
 					Logger.Error(
-						`Bad request: ${(this._response.response[0] as { raw: string }).raw}`,
+						`Bad request: ${(this._response.response[0] as { raw: string } | undefined)?.raw || 'error 400'}`,
 						Logger.GetCallerLocation()
 					);
 					break;
 				case 500:
 					Logger.Error(
-						`Server error: ${(this._response.response[0] as { raw: string }).raw}`,
+						`Server error: ${(this._response.response[0] as { raw: string } | undefined)?.raw || 'error 500'}`,
 						Logger.GetCallerLocation()
 					);
 					break;
 				default:
 					Logger.Error(
-						`Unknown error code: ${(this._response.response[0] as { raw: string }).raw}`,
+						`Unknown error: ${(this._response.response[0] as { raw: string }).raw}`,
 						Logger.GetCallerLocation()
 					);
 			}
@@ -127,7 +127,7 @@ export class TCPClient implements ITCPClient {
 		const authors = Array.from(
 			new Set(
 				checkResponse.response
-					.map((r: CheckResponseData) => r.authorIds)
+					.map((r: MethodResponseData) => r.authorIds)
 					.flat()
 					.filter((r) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/.test(r))
 			)
@@ -136,7 +136,7 @@ export class TCPClient implements ITCPClient {
 		responses.push(authorResponse);
 
 		const uniqueVersions = new Set<string>();
-		checkResponse.response.forEach((r: CheckResponseData) => {
+		checkResponse.response.forEach((r: MethodResponseData) => {
 			uniqueVersions.add(`${r.projectID}?${r.startVersion}`);
 			uniqueVersions.add(`${r.projectID}?${r.endVersion}`);
 		});

@@ -1,9 +1,14 @@
 import { RequestType } from './Request';
 
+type IResponseConstructor = {
+	new(): ResponseData
+}
+
 export class ResponseData {
 	[key: string]: unknown;
 }
-export class CheckResponseData extends ResponseData {
+
+export class MethodResponseData extends ResponseData {
 	public method_hash = '';
 	public projectID = '';
 	public startVersion = '';
@@ -15,9 +20,11 @@ export class CheckResponseData extends ResponseData {
 	public lineNumber = '';
 	public parserVersion = '';
 	public vulnCode = '';
+	public license = ''
 	public authorTotal = '';
 	public authorIds: string[] = [];
 }
+
 export class AuthorResponseData extends ResponseData {
 	public username = '';
 	public email = '';
@@ -35,22 +42,49 @@ export class ProjectResponseData extends ResponseData {
 	public defaultBranch = '';
 }
 
-export class VersionResponseData extends ResponseData {
-	raw = '';
-}
-export class JobResponseData extends ResponseData {
-	raw = '';
+
+function createGenericResponseObject(
+	TCreator: IResponseConstructor, 
+	entries: string[], 
+	filter: (idx: number) => boolean = () => false): ResponseData {
+		const data = new TCreator()
+		Object.keys(data).forEach((key, idx) => {
+			if (filter(idx)) return
+			data[key] = entries[idx]
+		})
+		return data
 }
 
-export class DefaultResponseData extends ResponseData {
-	raw = '';
+function decodeMethodData(raw: string) {
+	const rawEntries = raw.split('?');
+	const methodData = createGenericResponseObject(MethodResponseData, rawEntries, idx => idx >= 13)
+	methodData.authorIds = rawEntries.slice(13)
+	return methodData
+}
+
+function decodeAuthorData(raw: string) {
+	const rawEntries = raw.split('?');
+	const authorData = createGenericResponseObject(AuthorResponseData, rawEntries)
+	return authorData
+}
+
+function decodeProjectData(raw: string) {
+	const rawEntries = raw.split('?');
+	const projectData = createGenericResponseObject(ProjectResponseData, rawEntries)
+	return projectData
+}
+
+function decodeGeneric(raw: string) {
+	const genericResponse = new ResponseData()
+	genericResponse.raw = raw
+	return genericResponse
 }
 
 export class TCPResponse {
 	public responseCode: number;
 	public requestType: RequestType;
-	public response: unknown[];
-	constructor(responseCode: number, requestType: RequestType, response: unknown[]) {
+	public response: ResponseData[];
+	constructor(responseCode: number, requestType: RequestType, response: ResponseData[]) {
 		this.responseCode = responseCode;
 		this.requestType = requestType;
 		this.response = response;
@@ -58,51 +92,35 @@ export class TCPResponse {
 }
 
 export class ResponseDecoder {
-	private static readonly _instance = new ResponseDecoder();
-
-	private getResponseType(type: RequestType): ResponseData {
+	private static getResponseDecoder(type: RequestType): (raw: string) => ResponseData {
 		switch (type) {
 			case RequestType.CHECK:
-				return new CheckResponseData();
+				return decodeMethodData;
 			case RequestType.GET_AUTHOR:
-				return new AuthorResponseData();
+				return decodeAuthorData
 			case RequestType.EXTRACT_PROJECTS:
-				return new ProjectResponseData();
+				return decodeProjectData
 			case RequestType.GET_PREVIOUS_PROJECT:
-				return new VersionResponseData();
+				return decodeGeneric
 			case RequestType.GET_TOP_JOB:
-				return new JobResponseData();
+				return decodeGeneric
 			default:
-				return new DefaultResponseData();
+				return decodeGeneric
 		}
 	}
 
 	public static Decode(request: RequestType, raw: string[]): ResponseData[] {
 		if (raw.includes('No results found.')) return [];
 
-		const response = ResponseDecoder._instance.getResponseType(request);
-		if (response.raw != undefined) {
-			response.raw = raw.join('?');
-			return [response];
-		}
+		const decodeResponse = this.getResponseDecoder(request);
 
 		const decoded: ResponseData[] = [];
 		raw.forEach((line) => {
-			const rawMetadata = line.split('?');
-			const responseObj = JSON.parse(JSON.stringify(response)) as {
-				[key: string]: unknown;
-			};
-			const keys = Object.keys(responseObj);
-			keys.forEach((key, idx) => {
-				if (idx == keys.length - 1 && idx < rawMetadata.length - 1) {
-					for (let i = idx; i < rawMetadata.length; i++)
-						if (Array.isArray(responseObj[key])) {
-							(responseObj[key] as string[]).push(rawMetadata[i]);
-						}
-				} else if (Array.isArray(responseObj[key])) (responseObj[key] as string[]).push(rawMetadata[idx]);
-				else responseObj[key] = rawMetadata[idx] || '';
-			});
-			decoded.push(responseObj);
+			if (!line)
+				return
+			const responseObj = decodeResponse(line)
+			if (!Object.keys(responseObj).some((key: keyof typeof responseObj) => responseObj[key] == undefined))
+				decoded.push(responseObj)
 		});
 		return decoded;
 	}
