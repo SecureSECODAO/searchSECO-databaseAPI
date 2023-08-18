@@ -37,9 +37,8 @@ export class ProjectResponseData extends ResponseData {
 	public license = '';
 	public name = '';
 	public url = '';
-	public authorName = '';
-	public authorMail = '';
-	public defaultBranch = '';
+	public ownerId = ''
+	public parserVersion = ''
 }
 
 
