@@ -39,20 +39,19 @@ export class TCPClient implements ITCPClient {
 		this._port = typeof port == 'number' ? port : parseInt(port);
 		this._host = host;
 
-        this._port = typeof(port) == 'number' ? port : parseInt(port)
-        this._host = host
+		this._port = typeof port == 'number' ? port : parseInt(port);
+		this._host = host;
 
-        this._client = new Socket()
-        this._client.on('error', (err: unknown) => {
-            this._error = err
-            this._requestProcessed = true
-            this._busy = false
-            this._client.destroy()
-        })
-        this._client.on('data', (data: string) => {
-
-            const [code, ...rawResponse] = data.toString().split('\n')
-            const { type } = this._request || { type: RequestType.UNDEFINED }
+		this._client = new Socket();
+		this._client.on('error', (err: unknown) => {
+			this._error = err;
+			this._requestProcessed = true;
+			this._busy = false;
+			this._client.destroy();
+		});
+		this._client.on('data', (data: string) => {
+			const [code, ...rawResponse] = data.toString().split('\n');
+			const { type } = this._request || { type: RequestType.UNDEFINED };
 
 			if (Number.isNaN(parseInt(code))) {
 				Logger.Error(data, Logger.GetCallerLocation());
@@ -62,9 +61,9 @@ export class TCPClient implements ITCPClient {
 				return;
 			}
 
-            this._retryCount = 0
-            this._requestProcessed = true
-            this._busy = false
+			this._retryCount = 0;
+			this._requestProcessed = true;
+			this._busy = false;
 
 			this._response = new TCPResponse(
 				parseInt(code),

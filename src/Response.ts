@@ -1,8 +1,8 @@
 import { RequestType } from './Request';
 
 type IResponseConstructor = {
-	new(): ResponseData
-}
+	new (): ResponseData;
+};
 
 export class ResponseData {
 	[key: string]: unknown;
@@ -20,7 +20,7 @@ export class MethodResponseData extends ResponseData {
 	public lineNumber = '';
 	public parserVersion = '';
 	public vulnCode = '';
-	public license = ''
+	public license = '';
 	public authorTotal = '';
 	public authorIds: string[] = [];
 }
@@ -37,46 +37,46 @@ export class ProjectResponseData extends ResponseData {
 	public license = '';
 	public name = '';
 	public url = '';
-	public ownerId = ''
-	public parserVersion = ''
+	public ownerId = '';
+	public parserVersion = '';
 }
 
-
 function createGenericResponseObject(
-	TCreator: IResponseConstructor, 
-	entries: string[], 
-	filter: (idx: number) => boolean = () => false): ResponseData {
-		const data = new TCreator()
-		Object.keys(data).forEach((key, idx) => {
-			if (filter(idx)) return
-			data[key] = entries[idx]
-		})
-		return data
+	TCreator: IResponseConstructor,
+	entries: string[],
+	filter: (idx: number) => boolean = () => false
+): ResponseData {
+	const data = new TCreator();
+	Object.keys(data).forEach((key, idx) => {
+		if (filter(idx)) return;
+		data[key] = entries[idx];
+	});
+	return data;
 }
 
 function decodeMethodData(raw: string) {
 	const rawEntries = raw.split('?');
-	const methodData = createGenericResponseObject(MethodResponseData, rawEntries, idx => idx >= 13)
-	methodData.authorIds = rawEntries.slice(13)
-	return methodData
+	const methodData = createGenericResponseObject(MethodResponseData, rawEntries, (idx) => idx >= 13);
+	methodData.authorIds = rawEntries.slice(13);
+	return methodData;
 }
 
 function decodeAuthorData(raw: string) {
 	const rawEntries = raw.split('?');
-	const authorData = createGenericResponseObject(AuthorResponseData, rawEntries)
-	return authorData
+	const authorData = createGenericResponseObject(AuthorResponseData, rawEntries);
+	return authorData;
 }
 
 function decodeProjectData(raw: string) {
 	const rawEntries = raw.split('?');
-	const projectData = createGenericResponseObject(ProjectResponseData, rawEntries)
-	return projectData
+	const projectData = createGenericResponseObject(ProjectResponseData, rawEntries);
+	return projectData;
 }
 
 function decodeGeneric(raw: string) {
-	const genericResponse = new ResponseData()
-	genericResponse.raw = raw
-	return genericResponse
+	const genericResponse = new ResponseData();
+	genericResponse.raw = raw;
+	return genericResponse;
 }
 
 export class TCPResponse {
@@ -96,15 +96,15 @@ export class ResponseDecoder {
 			case RequestType.CHECK:
 				return decodeMethodData;
 			case RequestType.GET_AUTHOR:
-				return decodeAuthorData
+				return decodeAuthorData;
 			case RequestType.EXTRACT_PROJECTS:
-				return decodeProjectData
+				return decodeProjectData;
 			case RequestType.GET_PREVIOUS_PROJECT:
-				return decodeGeneric
+				return decodeGeneric;
 			case RequestType.GET_TOP_JOB:
-				return decodeGeneric
+				return decodeGeneric;
 			default:
-				return decodeGeneric
+				return decodeGeneric;
 		}
 	}
 
@@ -115,11 +115,10 @@ export class ResponseDecoder {
 
 		const decoded: ResponseData[] = [];
 		raw.forEach((line) => {
-			if (!line)
-				return
-			const responseObj = decodeResponse(line)
+			if (!line) return;
+			const responseObj = decodeResponse(line);
 			if (!Object.keys(responseObj).some((key: keyof typeof responseObj) => responseObj[key] == undefined))
-				decoded.push(responseObj)
+				decoded.push(responseObj);
 		});
 		return decoded;
 	}
