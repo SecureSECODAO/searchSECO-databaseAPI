@@ -2,7 +2,7 @@ import { Socket } from 'net';
 import { MethodResponseData, ResponseDecoder, TCPResponse } from './Response';
 import { RequestType, TCPRequest, RequestGenerator } from './Request';
 import Logger, { Verbosity } from './searchSECO-logger/src/Logger';
-import EventEmitter from 'events'
+import EventEmitter from 'events';
 
 const MAX_RETRY_COUNT = 3;
 
@@ -24,11 +24,13 @@ export class TCPClient extends EventEmitter implements ITCPClient {
 	private readonly _host: string = '';
 	private readonly _clientName: string;
 	private readonly _client: Socket;
+	private _connected = false;
 	private _request: TCPRequest | undefined = undefined;
+	private _pendingRequests: TCPRequest[] = [];
 	private _retryCount = 0;
 
 	constructor(clientName: string, host: string, port: number | string, verbosity: Verbosity = Verbosity.DEBUG) {
-		super()
+		super();
 
 		Logger.SetModule('database-API');
 		Logger.SetVerbosity(verbosity);
@@ -38,30 +40,22 @@ export class TCPClient extends EventEmitter implements ITCPClient {
 		this._port = typeof port == 'number' ? port : parseInt(port);
 		this._host = host;
 
-		this._port = typeof port == 'number' ? port : parseInt(port);
-		this._host = host;
-
 		this._client = new Socket();
-		this.initialize()
+		this.initialize();
 	}
 
 	private initialize() {
-		this._client.on('error', (err) => {
-			this.emit('error', err)
-			this._client.destroy();
-		});
 		this._client.on('data', (data: string) => {
 			const [code, ...rawResponse] = data.toString().split('\n');
 			const { type } = this._request || { type: RequestType.UNDEFINED };
 
 			if (Number.isNaN(parseInt(code))) {
 				Logger.Error(data, Logger.GetCallerLocation());
-				this.emit('error', data)
+				this.emit('error', data);
 				return;
 			}
 
 			this._retryCount = 0;
-
 
 			const response = new TCPResponse(
 				parseInt(code),
@@ -73,42 +67,65 @@ export class TCPClient extends EventEmitter implements ITCPClient {
 			);
 
 			Logger.Debug(`Response code ${response.responseCode} received from database.`, Logger.GetCallerLocation());
-
-			switch (response.responseCode) {
-				case 200: {
-					const isMessage = ((res: string | undefined) => {
-						return res && !res.includes('?') && Number.isNaN(parseInt(res));
-					})((response.response[0] as { raw: string } | undefined)?.raw);
-
-					if (isMessage) Logger.Info((response.response[0] as { raw: string }).raw, Logger.GetCallerLocation());
-					break;
-				}
-				case 400:
-					Logger.Error(
-						`Bad request: ${(response.response[0] as { raw: string } | undefined)?.raw || 'error 400'}`,
-						Logger.GetCallerLocation()
-					);
-					break;
-				case 500:
-					Logger.Error(
-						`Server error: ${(response.response[0] as { raw: string } | undefined)?.raw || 'error 500'}`,
-						Logger.GetCallerLocation()
-					);
-					break;
-				default:
-					Logger.Error(
-						`Unknown error: ${(response.response[0] as { raw: string }).raw}`,
-						Logger.GetCallerLocation()
-					);
-			}
-
-			this.emit('data', response)
-			this._client.destroy();
+			this.handleResponse(response);
+			this.disconnect().then(() => this.emit('data', response));
 		});
 	}
 
-	private connect(): void {
+	private handleResponse(response: TCPResponse) {
+		switch (response.responseCode) {
+			case 200: {
+				const isMessage = ((res: string | undefined) => {
+					return res && !res.includes('?') && Number.isNaN(parseInt(res));
+				})((response.response[0] as { raw: string } | undefined)?.raw);
+
+				if (isMessage) Logger.Info((response.response[0] as { raw: string }).raw, Logger.GetCallerLocation());
+				break;
+			}
+			case 400:
+				Logger.Error(
+					`Bad request: ${(response.response[0] as { raw: string } | undefined)?.raw || 'error 400'}`,
+					Logger.GetCallerLocation()
+				);
+				break;
+			case 500:
+				Logger.Error(
+					`Server error: ${(response.response[0] as { raw: string } | undefined)?.raw || 'error 500'}`,
+					Logger.GetCallerLocation()
+				);
+				break;
+			default:
+				Logger.Error(`Unknown error: ${(response.response[0] as { raw: string }).raw}`, Logger.GetCallerLocation());
+		}
+	}
+
+	private async connect(): Promise<void> {
+		if (this._connected) {
+			await this.disconnect();
+		}
+		this._connected = true;
 		this._client.connect(this._port, this._host);
+		return new Promise((resolve, reject) => {
+			this._client.on('connect', () => resolve());
+			this._client.on('error', (err) => {
+				this.emit('error', `could not connect: ${err}`);
+				reject();
+			});
+		});
+	}
+
+	private async disconnect(): Promise<void> {
+		this._client.end();
+		return new Promise((resolve, reject) => {
+			this._client.on('close', () => {
+				this._connected = false;
+				resolve();
+			});
+			this._client.on('error', (err) => {
+				this.emit('error', `could not disconnect: ${err}`);
+				reject();
+			});
+		});
 	}
 
 	/**
@@ -154,26 +171,28 @@ export class TCPClient extends EventEmitter implements ITCPClient {
 	 * @returns A promise which resolves to a TCPResponse object.
 	 */
 	public async Execute(type: RequestType, data: string[]): Promise<TCPResponse> {
-		this.connect()
 		const request = RequestGenerator.Generate(type, this._clientName, data);
-		this.send(request)
-
+		const self = this;
 		return new Promise((resolve, reject) => {
-			this.on('error', async err => {
-				if (this._retryCount >= MAX_RETRY_COUNT) {
+			if (!self._connected) {
+				self.connect().then(() => self.send(request));
+			} else self._pendingRequests.push(request);
+
+			this.on('error', async (err) => {
+				if (self._retryCount >= MAX_RETRY_COUNT) {
 					Logger.Error(`Connection timed out with error ${err}, skipping project`, Logger.GetCallerLocation());
-					reject(err)
-				}
-				else {
-					Logger.Error(`Database Error: ${err}. Retrying after 2 seconds...`, Logger.GetCallerLocation());
-					this._retryCount++;
+					reject(err);
+				} else {
+					Logger.Error(`Error: ${err}. Retrying after 2 seconds...`, Logger.GetCallerLocation());
+					self._retryCount++;
 					await this.Execute(type, data);
 				}
-			})
+			});
 			this.on('data', (response: TCPResponse) => {
-				resolve(response)
-			})
-		})
+				if (self._pendingRequests.length > 0) self.connect().then(() => self.send(self._pendingRequests.shift()));
+				resolve(response);
+			});
+		});
 	}
 
 	private send({ header, body }: TCPRequest) {
